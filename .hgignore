@@ -3,3 +3,4 @@ syntax: glob
 */sample
 *~
 *.pyc
+tmp/
