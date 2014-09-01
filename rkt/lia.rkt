@@ -15,9 +15,9 @@
                          (λ [n] (+ 1/4 n)) 0))))
 
 ;; mate-1 -> (hash (listof factor?) real?)
-(define (mate-1 mom dad num-children p)
+(define (mate-1 mom dad p)
   (for/hash ([(genotype prob) (foil (string->list mom) (string->list dad))])
-    (values genotype (* num-children prob p))))
+    (values genotype (* prob p))))
 
 (define (generation population other num-children)
   (for/fold ([result (hash)])
@@ -37,7 +37,7 @@
 
 (define (mate-old events1 events2 probability num-children)
   (define (-mate event1 event2)
-    (mate-1 event1 event2 num-children probability))
+    (mate-1 event1 event2 probability))
   (define top (make-hash))
   (define children (list top))
   (for ([event-gen-hash (map -mate events1 events2)])
@@ -97,7 +97,7 @@
     (reverse
      (for/list ([mom-factor mom]
                 [dad-factor dad])
-       (mate-1 mom-factor dad-factor start-probability num-children))))
+       (mate-1 mom-factor dad-factor start-probability))))
   (let merge ([indy-factors (cdr independent-factors)]
               [joined-factors
                (map (λ [p] (cons (list (car p)) (cdr p)))
@@ -112,25 +112,35 @@
                    l
                    (map (λ [f-p]
                            (cons (cons factor (car f-p))
-                                 (* prob (cdr f-p))))
+                                 (* num-children prob (cdr f-p))))
                         joined-factors))))))))
 
 (define (list->generation l)
   (define h (make-hash))
-  (for* ([p l]
-         [factor (car p)])
-    (unless (hash-has-key? h factor)
-      (hash-set! h factor (make-hash))))
-  (for/fold ([gen (hash)])
-      ([p l])
-    (for ([factor p])
-      )))
+  (for ([p l])
+    (define-values (level thk)
+      (for/fold ([last-level h]
+                 [thk (λ [] #f)])
+          ([factor (car p)])
+        (define level (hash-ref! last-level factor (make-hash)))
+        (values level (λ [] (hash-set! last-level factor (cdr p))))))
+    (thk))
+  (gen->immutable-gen h))
+
+(define (gen->immutable-gen gen)
+  (cond
+    [(hash? gen) 
+     (make-immutable-hash
+      (hash-map gen
+                (λ [k v] (cons k (gen->immutable-gen v)))))]
+    [else gen]))
 
 ;; generation generation?
 ;; fellow (listof factor?)
 (define (next-generation generation fellow num-children)
   (foldl union-generations
-         (hash)
+         generation
          (map (λ (parent-prob)
-                 (mate (car parent-prob) fellow (cdr parent-prob) num-children))
+                (list->generation
+                 (mate (car parent-prob) fellow (cdr parent-prob) num-children)))
               (generation->list generation))))
