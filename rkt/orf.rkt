@@ -4,6 +4,10 @@
 (require racket/list)
 (require racket/string)
 
+(require "string.rkt")
+
+(provide dna-string->codons proteins)
+
 (define dna-codon
   (hash
    "TTT" "F"      "CTT" "L"      "ATT" "I"      "GTT" "V"
@@ -23,12 +27,6 @@
    "TGA" "Stop"   "CGA" "R"      "AGA" "R"      "GGA" "G"
    "TGG" "W"      "CGG" "R"      "AGG" "R"      "GGG" "G"))
 
-(define dna-nucleotide-pair
-  (hash #\A #\T
-        #\C #\G
-        #\G #\C
-        #\T #\A))
-
 (define (part n lst)
   (let loop ([parts '()]
              [rest lst])
@@ -37,11 +35,6 @@
      [(< (length rest) n) (loop (cons rest parts) '())]
      [else (loop (cons (take rest n) parts)
                  (drop rest n))])))
-
-(define (dna-reverse-complement dna-string)
-  (list->string
-   (reverse
-    (map (λ [n] (hash-ref dna-nucleotide-pair n)) (string->list dna-string)))))
 
 (define (dna-string->codons dna-string)
   (map (λ [dna3] (hash-ref dna-codon dna3))
