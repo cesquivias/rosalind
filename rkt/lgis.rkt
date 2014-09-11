@@ -3,53 +3,47 @@
 (require racket/list)
 (require racket/port)
 (require racket/string)
+(require racket/vector)
 
-(define (longest-compared comp seq)
-  (define (new-candidates el lst)
-    (for/list ([n lst]
-               #:when (comp el n))
-      (list el n)))
+(require (planet dherman/memoize:3:1))
 
-  (define (grown-candidates el hsh)
-    (for/fold ([candidates '()])
-        ([list-of-lists (hash-values hsh)])
-      (values
-       (append
-        (for/list ([lst list-of-lists]
-                   #:when (comp el (car lst)))
-          (cons el lst))
-        candidates))))
+(define lines (port->lines (open-input-file "/tmp/rosalind_lgis_5.txt")))
+(define nums (list->vector
+              (map string->number (string-split (cadr lines) " "))))
 
-  (define (longest-candidates list-of-lists)
-    (define max-length (for/fold ([max-length 0])
-                           ([lst list-of-lists]
-                            #:when (comp (length lst) max-length))
-                         (values (length lst))))
-    (filter (λ [l] (= max-length (length l)))
-            list-of-lists))
-
-  (let loop ([elements '()]
-             [candidates (hash)]
-             [seq (reverse seq)])
+(define (longest-comp-subsequence comp v)
+  (define/memo (LS i)
+    (define el (vector-ref v i))
     (cond
-     [(null? seq) (car (longest-candidates (map car (hash-values candidates))))]
-     [else (define el (car seq))
-           (when (= 0 (modulo (length elements) 100))
-             (displayln (length elements)))
-           (define el-candidates (longest-candidates
-                                  (append (new-candidates el elements)
-                                          (grown-candidates el candidates))))
-           (loop (cons el elements)
-                 (if (null? el-candidates)
-                     candidates
-                     (hash-set candidates el el-candidates))
-                 (cdr seq))])))
+     [(= i 0) (vector el)]
+     [else (vector-append (max-subsequence
+                                       el
+                                       (foldl (λ [i l] (cons (LS i)
+                                                             l))
+                                              '()
+                                              (range i)))
+                          (vector el))]))
+  (define (max-subsequence el seqs)
+    (for/fold ([max #()])
+        ([seq (filter (λ [v] (comp el
+                                   (vector-ref v (sub1 (vector-length v)))))
+                      seqs)])
+      (if (> (vector-length seq)
+             (vector-length max))
+          (values seq)
+          (values max))))
 
-(define (longest-decreasing seq)
-  (longest-compared > seq))
+  (for/fold ([max-seq #()])
+      ([i (in-range (vector-length v))])
+    (define seq (LS i))
+    (if (> (vector-length seq) (vector-length max-seq))
+        (values seq)
+        (values max-seq))))
 
-(define (longest-increasing seq)
-  (reverse (longest-compared > (reverse seq))))
 
-(define lines (port->lines (open-input-file "/tmp/rosalind_lgis.txt")))
-(define nums (map string->number (string-split (cadr lines) " ")))
+(define (longest-increasing-subsequence v)
+  (longest-comp-subsequence > v))
+
+(define (longest-decreasing-subsequence v)
+  (longest-comp-subsequence < v))
+
