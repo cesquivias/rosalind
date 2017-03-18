@@ -26,5 +26,6 @@ def encode_strand(strand):
 if __name__ == '__main__':
     import sys
 
-    print encode_strand(open(sys.argv[1]).read().strip())
+    f = sys.stdin if len(sys.argv) == 1 else open(sys.argv[1])
+    print encode_strand(f.read().strip())
 

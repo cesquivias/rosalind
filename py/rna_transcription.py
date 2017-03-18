@@ -6,4 +6,6 @@ def transcribe_rna(dna):
 if __name__ == '__main__':
     import sys
 
-    print transcribe_rna(open(sys.argv[1]).read())
+    f = sys.stdin if len(sys.argv) == 1 else open(sys.argv[1])
+    print transcribe_rna(f.read())
+        
